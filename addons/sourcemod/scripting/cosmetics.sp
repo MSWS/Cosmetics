@@ -18,11 +18,18 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     CreateNative("HasCosmetic", Native_HasCosmetic);
     CreateNative("IsEquipped", Native_IsEquipped);
     CreateNative("GrantCosmetic", Native_GrantCosmetic);
+    CreateNative("RegisterCosmetic", Native_RegisterCosmetic);
     return APLRes_Success;
 }
 
 public void OnPluginStart() {
     RegConsoleCmd("sm_shop", Command_Shop);
+
+    for (int cat = 0; cat < sizeof(g_MenuItems); cat++) {
+        for (int i = 0; i < MAX_COSMETICS; i++) {
+            g_MenuItems[cat][i].cost = -1;
+        }
+    }
 }
 
 public Action Command_Shop(int client, int args) {
@@ -33,11 +40,11 @@ public Action Command_Shop(int client, int args) {
 public void OpenCosmeticMenu(int client) {
     Menu menu = new Menu(MenuHandler_Cosmetic);
     menu.SetTitle("Store Menu - %d Credits", GetCredits(client));
-    menu.AddItem("highlight", "Highlights");
-    menu.AddItem("trails", "Trails");
-    menu.AddItem("styles", "Styles");
-    menu.AddItem("glows", "Glow");
-    menu.AddItem("ws", "Weapon Skins");
+    for (int i = 0; i < sizeof(g_MenuItems); i++) {
+        char line[64];
+        FormatCategory(view_as<Category>(i), line, sizeof(line));
+        menu.AddItem("", line);
+    }
     menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -66,47 +73,13 @@ public void OpenCategoryMenu(int client, Category cat) {
     }
 }
 
-// public void OpenHighlightMenu(int client) {
-//     Menu menu = new Menu(MenuHandler_Highlight);
-//     menu.SetTitle("Player Highlights - %d Credits\nOther players will see your player model tinted this color.", GetCredits(client));
-//     char cls[3][8]   = { "255;0;0", "0;255;0", "0;0;255" };
-//     char names[3][8] = { "Red", "Green", "Blue" };
-//     int costs[]      = { 250, 200, 180 };
-//     for (int i = 0; i < sizeof(cls); i++) {
-//         char id[32];
-//         Format(id, sizeof(id), "highlight_%s", names[i]);
-//         char line[32];
-//         if (!HasCosmetic(client, id)) {
-//             Format(line, sizeof(line), "%s - %d Credits", names[i], costs[i]);
-//             menu.AddItem(cls[i], line, GetCredits(client) > costs[i] ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
-//         }
-//         if (HasCosmetic(client, id)) {
-//             if (IsEquipped(client, id)) {
-//                 Format(line, sizeof(line), "%s - Equipped", names[i]);
-//                 menu.AddItem(cls[i], line, ITEMDRAW_DISABLED);
-//             }
-//             Format(line, sizeof(line), "%s", names[i]);
-//             menu.AddItem(cls[i], line);
-//         }
-//     }
-//     menu.Display(client, MENU_TIME_FOREVER);
-// }
-
 int MenuHandler_Cosmetic(Menu menu, MenuAction action, int param1, int param2) {
     if (action != MenuAction_Select) {
         if (action == MenuAction_End)
             delete menu;
         return 0;
     }
-    char sid[32];
-    GetMenuItem(menu, param2, sid, sizeof(sid));
-    if (StrEqual(sid, "highlight")) {
-        // OpenHighlightMenu(param1);
-    } else if (StrEqual(sid, "glows")) {
-        //     OpenGlowMenu(param1);
-        // } else if (StrEqual(sid, "weaponskin")) {
-        //     OpenWeaponSkinMenu(param1);
-    }
+    OpenCategoryMenu(param1, view_as<Category>(param2));
     return 0;
 }
 
@@ -119,17 +92,6 @@ int MenuHandler_Highlight(Menu menu, MenuAction action, int param1, int param2) 
     char info[32];
     GetMenuItem(menu, param2, info, sizeof(info));
     PrintToChat(param1, "You selected %s", info);
-    // char sid[32];
-    // GetMenuItem(menu, param2, sid, sizeof(sid));
-    // char sCol[3][4];
-    // ExplodeString(sid, ";", sCol, sizeof(sCol), sizeof(sCol[]));
-    // int r     = StringToInt(sCol[0]);
-    // int g     = StringToInt(sCol[1]);
-    // int b     = StringToInt(sCol[2]);
-    // int alpha = 255;
-    // int un;
-    // GetEntityRenderColor(param1, un, un, un, alpha);
-    // SetEntityRenderColor(param1, r, g, b, alpha);
     return 0;
 }
 
@@ -168,4 +130,22 @@ int Native_GrantCosmetic(Handle plugin, int args) {
     ck.Set(client, equip ? "2" : "1");
     delete ck;
     return 0;
+}
+
+int Native_RegisterCosmetic(Handle plugin, int args) {
+    Category cat = view_as<Category>(GetNativeCell(1));
+    MenuItem item;
+    GetNativeArray(2, item, sizeof(item));
+    int index = CountCosmetics(cat);
+    if (index >= MAX_COSMETICS)
+        ThrowError("Reached max cosmetics of %d (%d)", view_as<int>(cat), index);
+    return 0;
+}
+
+public int CountCosmetics(Category cat) {
+    for (int i = 0; i < MAX_COSMETICS; i++) {
+        if (g_MenuItems[view_as<int>(cat)][i].cost == -1)
+            return i;
+    }
+    return MAX_COSMETICS;
 }
