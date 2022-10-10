@@ -14,6 +14,13 @@ public Plugin myinfo =
     url         = ""
 };
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+    CreateNative("HasCosmetic", Native_HasCosmetic);
+    CreateNative("IsEquipped", Native_IsEquipped);
+    CreateNative("GrantCosmetic", Native_GrantCosmetic);
+    return APLRes_Success;
+}
+
 public void OnPluginStart() {
     RegConsoleCmd("sm_shop", Command_Shop);
 }
@@ -109,39 +116,56 @@ int MenuHandler_Highlight(Menu menu, MenuAction action, int param1, int param2) 
             delete menu;
         return 0;
     }
-    char sid[32];
-    GetMenuItem(menu, param2, sid, sizeof(sid));
-    char sCol[3][4];
-    ExplodeString(sid, ";", sCol, sizeof(sCol), sizeof(sCol[]));
-    int r     = StringToInt(sCol[0]);
-    int g     = StringToInt(sCol[1]);
-    int b     = StringToInt(sCol[2]);
-    int alpha = 255;
-    int un;
-    GetEntityRenderColor(param1, un, un, un, alpha);
-    SetEntityRenderColor(param1, r, g, b, alpha);
+    char info[32];
+    GetMenuItem(menu, param2, info, sizeof(info));
+    PrintToChat(param1, "You selected %s", info);
+    // char sid[32];
+    // GetMenuItem(menu, param2, sid, sizeof(sid));
+    // char sCol[3][4];
+    // ExplodeString(sid, ";", sCol, sizeof(sCol), sizeof(sCol[]));
+    // int r     = StringToInt(sCol[0]);
+    // int g     = StringToInt(sCol[1]);
+    // int b     = StringToInt(sCol[2]);
+    // int alpha = 255;
+    // int un;
+    // GetEntityRenderColor(param1, un, un, un, alpha);
+    // SetEntityRenderColor(param1, r, g, b, alpha);
     return 0;
 }
 
-bool HasCosmetic(int client, const char[] cosmetic) {
-    Cookie ck = RegClientCookie(cosmetic, "Auto-generated", CookieAccess_Private);
+int Native_HasCosmetic(Handle plugin, int args) {
+    int client = GetNativeCell(1);
+    char info[32];
+    GetNativeString(2, info, sizeof(info));
+    Cookie ck = RegClientCookie(info, "Auto-generated", CookieAccess_Private);
     char buff[3];
     ck.Get(client, buff, sizeof(buff));
+    delete ck;
     return StringToInt(buff) > 0;
 }
 
-bool IsEquipped(int client, const char[] cosmetic) {
-    Cookie ck = RegClientCookie(cosmetic, "Auto-generated", CookieAccess_Private);
+int Native_IsEquipped(Handle plugin, int args) {
+    int client = GetNativeCell(1);
+    char info[32];
+    GetNativeString(2, info, sizeof(info));
+    Cookie ck = RegClientCookie(info, "Auto-generated", CookieAccess_Private);
     char buff[3];
     ck.Get(client, buff, sizeof(buff));
+    delete ck;
     return StringToInt(buff) == 2;
 }
 
-void GrantCosmetic(int client, const char[] cosmetic, bool equip = false) {
-    Cookie ck = RegClientCookie(cosmetic, "Auto-generated", CookieAccess_Private);
+int Native_GrantCosmetic(Handle plugin, int args) {
+    int client = GetNativeCell(1);
+    char info[32];
+    GetNativeString(2, info, sizeof(info));
+    bool equip = view_as<bool>(GetNativeCell(3));
+    Cookie ck  = RegClientCookie(info, "Auto-generated", CookieAccess_Private);
     char buff[3];
     ck.Get(client, buff, sizeof(buff));
     if (StringToInt(buff) != 0)
-        return;
+        return 0;
     ck.Set(client, equip ? "2" : "1");
+    delete ck;
+    return 0;
 }

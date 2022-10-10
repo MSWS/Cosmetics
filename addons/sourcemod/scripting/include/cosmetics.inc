@@ -19,6 +19,12 @@ MenuItem g_MenuItems[Category][MAX_COSMETICS];
 
 native void RegisterCosmetic(Category cat, any item);
 
+native bool HasCosmetic(int client, const char[] cosmetic);
+
+native bool IsEquipped(int client, const char[] cosmetic);
+
+native void GrantCosmetic(int client, const char[] cosmetic, bool equip = false);
+
 void FormatCategory(Category cat, char[] buffer, int len) {
 	switch (cat) {
 		case HIGHLIGHT:
