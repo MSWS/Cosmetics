@@ -14,11 +14,15 @@ public Plugin myinfo =
     url         = ""
 };
 
+int gI_Categories[MAXPLAYERS + 1];
+
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
     CreateNative("HasCosmetic", Native_HasCosmetic);
     CreateNative("IsEquipped", Native_IsEquipped);
     CreateNative("GrantCosmetic", Native_GrantCosmetic);
     CreateNative("RegisterCosmetic", Native_RegisterCosmetic);
+    CreateNative("EquipCosmetic", Native_EquipCosmetic);
+    CreateNative("UnequipCosmetic", Native_UnequipCosmetic);
     return APLRes_Success;
 }
 
@@ -79,6 +83,7 @@ int MenuHandler_Cosmetic(Menu menu, MenuAction action, int param1, int param2) {
             delete menu;
         return 0;
     }
+    gI_Categories[param1] = param2;
     OpenCategoryMenu(param1, view_as<Category>(param2));
     return 0;
 }
@@ -92,6 +97,13 @@ int MenuHandler_Highlight(Menu menu, MenuAction action, int param1, int param2) 
     char info[32];
     GetMenuItem(menu, param2, info, sizeof(info));
     PrintToChat(param1, "You selected %s", info);
+    if (!HasCosmetic(param1, info)) {
+        // Open purchase menu
+        return 0;
+    }
+
+    UnequipCategory(param1, view_as<Category>(gI_Categories[param1]));
+    EquipCosmetic(param1, info);
     return 0;
 }
 
@@ -148,4 +160,39 @@ public int CountCosmetics(Category cat) {
             return i;
     }
     return MAX_COSMETICS;
+}
+
+void UnequipCategory(int client, Category cat) {
+    for (int i = 0; i < MAX_COSMETICS; i++) {
+        MenuItem item;
+        item = g_MenuItems[view_as<int>(cat)][i];
+        if (item.cost == -1)
+            continue;
+        if (IsEquipped(client, item.info))
+            UnequipCosmetic(client, item.info);
+    }
+}
+
+public int Native_EquipCosmetic(Handle plugin, int args) {
+    int client = GetNativeCell(1);
+    char info[32];
+    GetNativeString(2, info, sizeof(info));
+    if (!HasCosmetic(client, info))
+        ThrowError("Attempted to grant cosmetic %s to %N, but they don't have it", info, client);
+    Cookie ck = RegClientCookie(info, "Auto-generated", CookieAccess_Private);
+    ck.Set(client, "2");
+    delete ck;
+    return 0;
+}
+
+public int Native_UnequipCosmetic(Handle plugin, int args) {
+    int client = GetNativeCell(1);
+    char info[32];
+    GetNativeString(2, info, sizeof(info));
+    if (!HasCosmetic(client, info))
+        ThrowError("Attempted to unequip cosmetic %s from %N, but they don't have it", info, client);
+    Cookie ck = RegClientCookie(info, "Auto-generated", CookieAccess_Private);
+    ck.Set(client, "1");
+    delete ck;
+    return 0;
 }
